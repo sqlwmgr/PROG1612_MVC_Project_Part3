@@ -20,12 +20,33 @@ namespace solution_MVC_Music.Controllers
         }
 
         // GET: Musicians
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? InstrumentID, string SearchString)
         {
-            var musicContext = _context.Musicians
+            ViewData["InstrumentID"] = new SelectList(_context.Instruments.OrderBy(i => i.Name), "ID", "Name");
+            PopulateDropDownLists();
+            ViewData["Filtering"] = "";
+
+            //var musicContext = _context.Musicians
+            //    .Include(m => m.Instrument)
+            //    .Include(m=>m.Plays).ThenInclude(p=>p.Instrument);
+
+            var musicians = from m in _context.Musicians
                 .Include(m => m.Instrument)
-                .Include(m=>m.Plays).ThenInclude(p=>p.Instrument);
-            return View(await musicContext.ToListAsync());
+                .Include(m => m.Plays)
+                .ThenInclude(p => p.Instrument)
+                select m;
+
+            if (InstrumentID.HasValue)
+            {
+                musicians = musicians.Where(m => m.InstrumentID == InstrumentID);
+                ViewData["Filtering"] = "in";
+            }
+            if(!string.IsNullOrEmpty(SearchString))
+            {
+                musicians = musicians.Where(m => m.LastName.ToUpper().Contains(SearchString.ToUpper())||m.FirstName.ToUpper().Contains(SearchString.ToUpper()));
+            }
+
+            return View(await musicians.ToListAsync());
         }
 
         // GET: Musicians/Details/5
