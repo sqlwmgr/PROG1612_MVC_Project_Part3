@@ -16,7 +16,7 @@ namespace solution_MVC_Music.Data.MusicMigrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("MUSIC")
-                .HasAnnotation("ProductVersion", "2.1.1-rtm-30846")
+                .HasAnnotation("ProductVersion", "2.1.2-rtm-30932")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 

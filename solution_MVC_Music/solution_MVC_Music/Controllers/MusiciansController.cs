@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using solution_MVC_Music.Data;
 using solution_MVC_Music.Models;
+using solution_MVC_Music.ViewModels;
 
 namespace solution_MVC_Music.Controllers
 {
@@ -143,6 +145,10 @@ namespace solution_MVC_Music.Controllers
         // GET: Musicians/Create
         public IActionResult Create()
         {
+            var musician = new Musician();
+            musician.Plays = new List<Plays>();
+            PopulateAssignedInstrumentData(musician);
+
             PopulateDropDownLists();
             return View();
         }
@@ -152,16 +158,30 @@ namespace solution_MVC_Music.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ID,FirstName,MiddleName,LastName,Phone,DOB,SIN,InstrumentID")] Musician musician)
+        public async Task<IActionResult> Create([Bind("ID,FirstName,MiddleName,LastName,Phone,DOB,SIN,InstrumentID")] Musician musician, string[] selectedInstruments)
         {
             try
             {
+                if (selectedInstruments != null)
+                {
+                    musician.Plays = new List<Plays>();
+                    foreach(var ins in selectedInstruments)
+                    {
+                        var insToAdd = new Plays { MusicianID = musician.ID, InstrumentID = int.Parse(ins) };
+                        musician.Plays.Add(insToAdd);
+                    }
+                }
+
                 if (ModelState.IsValid)
                 {
                     _context.Add(musician);
                     await _context.SaveChangesAsync();
                     return RedirectToAction(nameof(Index));
                 }
+            }
+            catch (RetryLimitExceededException)
+            {
+                ModelState.AddModelError("", "Unable to save changes after multiple attempts. Try again,");
             }
             catch (DbUpdateException dex)
             {
@@ -198,6 +218,7 @@ namespace solution_MVC_Music.Controllers
                 return NotFound();
             }
             PopulateDropDownLists(musician);
+            PopulateAssignedInstrumentData(musician);
             return View(musician);
         }
 
@@ -206,12 +227,18 @@ namespace solution_MVC_Music.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id)//, [Bind("ID,FirstName,MiddleName,LastName,Phone,DOB,SIN,InstrumentID")] Musician musician)
+        public async Task<IActionResult> Edit(int id, string[] selectedInstruments)//, [Bind("ID,FirstName,MiddleName,LastName,Phone,DOB,SIN,InstrumentID")] Musician musician)
         {
             var musicianToUpdate = await _context.Musicians
                 .Include(m => m.Instrument)
                 .Include(m => m.Plays).ThenInclude(p => p.Instrument)
                 .FirstOrDefaultAsync(m => m.ID == id);
+
+            if (musicianToUpdate == null)
+            {
+                return NotFound();
+            }
+            UpdateMusicianInstruments(selectedInstruments, musicianToUpdate);
 
             //Try updating it with the values posted
             if (await TryUpdateModelAsync<Musician>(musicianToUpdate, "",
@@ -311,6 +338,24 @@ namespace solution_MVC_Music.Controllers
                          select i;
             return new SelectList(dQuery, "ID", "Name", musician?.InstrumentID);
         }
+
+        private void PopulateAssignedInstrumentData(Musician musician)
+        {
+            var allInstruments = _context.Instruments;
+            var pInstruments = new HashSet<int>(musician.Plays.Select(i => i.InstrumentID));
+            var viewModel = new List<PlaysVM>();
+            foreach(var ins in allInstruments)
+            {
+                viewModel.Add(new PlaysVM
+                {
+                    InstrumentID = ins.ID,
+                    InstrumentName = ins.Name,
+                    Assigned = pInstruments.Contains(ins.ID)
+                });
+            }
+            ViewData["Instruments"] = viewModel;
+        }
+
         private void PopulateDropDownLists(Musician musician = null)
         {
             ViewData["InstrumentID"] = InstrumentSelectList(musician);
@@ -319,6 +364,36 @@ namespace solution_MVC_Music.Controllers
         private bool MusicianExists(int id)
         {
             return _context.Musicians.Any(e => e.ID == id);
+        }
+
+        private void UpdateMusicianInstruments(string[] selectedInstruments, Musician musicianToUpdate)
+        {
+            if (selectedInstruments == null)
+            {
+                musicianToUpdate.Plays = new List<Plays>();
+                return;
+            }
+
+            var selectedInstrumentsHS = new HashSet<string>(selectedInstruments);
+            var insts = new HashSet<int>(musicianToUpdate.Plays.Select(p => p.InstrumentID));
+            foreach(var inst in _context.Instruments)
+            {
+                if (selectedInstrumentsHS.Contains(inst.ID.ToString()))
+                {
+                    if (!insts.Contains(inst.ID))
+                    {
+                        musicianToUpdate.Plays.Add(new Plays { MusicianID = musicianToUpdate.ID, InstrumentID = inst.ID });
+                    }
+                }
+                else
+                {
+                    if (insts.Contains(inst.ID))
+                    {
+                        Plays instrumentToRemove = musicianToUpdate.Plays.SingleOrDefault(p => p.InstrumentID == inst.ID);
+                        _context.Remove(instrumentToRemove);
+                    }
+                }
+            }
         }
     }
 }

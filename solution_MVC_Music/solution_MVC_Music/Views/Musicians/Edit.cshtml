@@ -49,9 +49,36 @@
                 <span asp-validation-for="InstrumentID" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-default" />
-            </div>
-        </form>
+                <label class="control-label">Plays</label>
+                <div class="col-md-offset-1">
+                    <table>
+                        <tr>
+                            @{
+                                int cnt = 0;
+                                List<solution_MVC_Music.ViewModels.PlaysVM> instruments = ViewBag.Instruments;
+                                foreach (var ins in instruments)
+                                {
+                                    if (cnt++ % 3 == 0)
+                                    {
+                                    @:</tr><tr>
+                                    }
+                                    @:<td>
+                                        <input type="checkbox"
+                                               name="selectedInstruments"
+                                               value="@ins.InstrumentID"
+                                               @(Html.Raw(ins.Assigned ? "checked=\"checked\"" : "")) />
+                                        @ins.InstrumentName @:&nbsp;&nbsp;
+                                    @:</td>
+                                }
+                            @:</tr>
+                            }
+                        </table>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="submit" value="Save" class="btn btn-default" />
+                </div>
+            </form>
     </div>
 </div>
 

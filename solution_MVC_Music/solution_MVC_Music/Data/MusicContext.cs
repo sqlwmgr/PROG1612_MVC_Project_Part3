@@ -127,7 +127,6 @@ namespace solution_MVC_Music.Data
             //    .WithMany(p => p.Performances)
             //    .HasForeignKey(c => c.MusicianID)
             //    .OnDelete(DeleteBehavior.Restrict);
-
         }
     }
 }
