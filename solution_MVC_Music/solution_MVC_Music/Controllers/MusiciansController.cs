@@ -20,7 +20,7 @@ namespace solution_MVC_Music.Controllers
         }
 
         // GET: Musicians
-        public async Task<IActionResult> Index(int? InstrumentID, string SearchString)
+        public async Task<IActionResult> Index(int? InstrumentID, string SearchString, string sortDirection, string sortField, string actionButton)
         {
             ViewData["InstrumentID"] = new SelectList(_context.Instruments.OrderBy(i => i.Name), "ID", "Name");
             PopulateDropDownLists();
@@ -41,10 +41,80 @@ namespace solution_MVC_Music.Controllers
                 musicians = musicians.Where(m => m.InstrumentID == InstrumentID);
                 ViewData["Filtering"] = "in";
             }
-            if(!string.IsNullOrEmpty(SearchString))
+            if (!string.IsNullOrEmpty(SearchString))
             {
                 musicians = musicians.Where(m => m.LastName.ToUpper().Contains(SearchString.ToUpper())||m.FirstName.ToUpper().Contains(SearchString.ToUpper()));
             }
+
+            if (!string.IsNullOrEmpty(actionButton))
+            {
+                if (actionButton != "Filter")
+                {
+                    if (actionButton == sortField)
+                    {
+                        sortDirection = string.IsNullOrEmpty(sortDirection) ? "desc" : "";
+                    }
+                    sortField = actionButton;
+                }
+            }
+
+            if (sortField == "Musician")
+            {
+                if (string.IsNullOrEmpty(sortDirection))
+                {
+                    musicians = musicians
+                        .OrderBy(m => m.FirstName)
+                        .ThenBy(m => m.LastName);
+                }
+                else
+                {
+                    musicians = musicians
+                        .OrderByDescending(m => m.FirstName)
+                        .ThenByDescending(m => m.LastName);
+                }
+            }
+            else if (sortField == "Phone")
+            {
+                if (string.IsNullOrEmpty(sortDirection))
+                {
+                    musicians = musicians
+                        .OrderBy(m => m.Phone);
+                }
+                else
+                {
+                    musicians = musicians
+                        .OrderByDescending(m => m.Phone);
+                }
+            }
+            else if (sortField == "Age")
+            {
+                if (string.IsNullOrEmpty(sortDirection))
+                {
+                    musicians = musicians
+                        .OrderBy(m => m.DOB);
+                }
+                else
+                {
+                    musicians = musicians
+                        .OrderByDescending(m => m.DOB);
+                }
+            }
+            else if (sortField == "Instrument")
+            {
+                if (string.IsNullOrEmpty(sortDirection))
+                {
+                    musicians = musicians
+                        .OrderBy(m => m.Instrument.Name);
+                }
+                else
+                {
+                    musicians = musicians
+                        .OrderByDescending(m => m.Instrument.Name);
+                }
+            }
+
+            ViewData["sortField"] = sortField;
+            ViewData["sortDirection"] = sortDirection;
 
             return View(await musicians.ToListAsync());
         }
